@@ -8,28 +8,33 @@ def R(x,y):
   return (100*(y-x**2)**2)+((1-x)**2)
 
 def W3(x,y):
-  return R(x, y) - Z(x,y)
+  return -(R(x, y) - Z(x,y)) + 4000
 
-REPRESENTATION_SIZE = 30
+def W32(x,y):
+  return (R(x, y) - Z(x,y))
+
+REPRESENTATION_SIZE = 20
 MUTATION_PROBABILITY = 0.01
 MIN_AXIS = -2.0
 MAX_AXIS = 2.0
-POPULATION_SIZE = 4
-MAX_ITER = 10000
+POPULATION_SIZE = 8
+MAX_ITER = 100
 X_CHROMOSSOME = 0
 Y_CHROMOSSOME = 1
 BINOMIAL_TRY_COUNT = 1
 INTEGER_INTERVAL_SIZE = 2
+MIN_CUT_POINT = 1
 
 class Individual(object):
 
   # magic methods to get the ball rolling
+
   def __init__(self, *args, **kwargs):
     self.genotype = kwargs.get('genotype', None)
     self.eval_fn = kwargs.get('eval_fn', None)
 
   def __repr__(self):
-    return "\nx value: %r (%r)\ny value: %r (%r) f=(%r)" % (self.genotype[X_CHROMOSSOME],self.value(X_CHROMOSSOME), self.genotype[Y_CHROMOSSOME], self.value(Y_CHROMOSSOME), self.fenotype())
+    return "\nx value: %r (%r)\ny value: %r (%r) f=(%r)" % (self.genotype[X_CHROMOSSOME],self.value(X_CHROMOSSOME), self.genotype[Y_CHROMOSSOME], self.value(Y_CHROMOSSOME), self.fenotype2(W32 ))
 
   def __getitem__(self,key):
     return self.genotype[key]
@@ -39,22 +44,11 @@ class Individual(object):
       yield i
 
   # end magic methods
-  
-  @staticmethod
-  def random(eval_fn):
-    i = Individual()
-    i.genotype = (np.random.choice(INTEGER_INTERVAL_SIZE,REPRESENTATION_SIZE), np.random.choice(INTEGER_INTERVAL_SIZE,REPRESENTATION_SIZE))
-    i.eval_fn = eval_fn
-    return i
+
+  # private - not supposed to be exposed
 
   def _value_uint(self, x_or_y):
     return BitArray(self.genotype[x_or_y]).uint
-
-  def value(self, x_or_y):
-    return MIN_AXIS+(MAX_AXIS - MIN_AXIS)*(self._value_uint(x_or_y)/(2.0**REPRESENTATION_SIZE-1.0))
-  
-  def fenotype(self):
-    return self.eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
 
   def _mutation_mask_generator(self):
     for i in xrange(REPRESENTATION_SIZE):
@@ -63,6 +57,24 @@ class Individual(object):
   def _mutate(self, x_or_y):
     mask = list(self._mutation_mask_generator())
     np.bitwise_xor(self.genotype[x_or_y],mask,self.genotype[x_or_y])
+
+  # end private
+  
+  @staticmethod
+  def random(eval_fn):
+    i = Individual()
+    i.genotype = (np.random.choice(INTEGER_INTERVAL_SIZE,REPRESENTATION_SIZE), np.random.choice(INTEGER_INTERVAL_SIZE,REPRESENTATION_SIZE))
+    i.eval_fn = eval_fn
+    return i
+
+  def value(self, x_or_y):
+    return MIN_AXIS+(MAX_AXIS - MIN_AXIS)*(self._value_uint(x_or_y)/(2.0**REPRESENTATION_SIZE-1.0))
+  
+  def fenotype(self):
+    return  self.eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
+
+  def fenotype2(self,eval_fn):
+    return  eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
 
   def mutate(self):
     self._mutate(X_CHROMOSSOME)
@@ -78,13 +90,13 @@ class Population(list):
       p.append(Individual.random(eval_fn))
     return p
 
-  def sum(self):
-    # defines how good our population is
+  def fitness(self):
+    # defines the fitness of our population
     return sum (i.fenotype() for i in self)
 
   def select(self):
     # returns a list with probability weighted selected parents 
-    return np.random.choice(self,POPULATION_SIZE, p=[i.fenotype()/self.sum() for i in self])
+    return np.random.choice(self,POPULATION_SIZE, p=[i.fenotype()/self.fitness() for i in self])
   
   def pairup(self,parents):
     # takes an even number of parents and returns iterator of pair of parents
@@ -104,8 +116,6 @@ class Population(list):
   @staticmethod
   def crossover(parents):
     # takes a sequence of 2 indviduals and returns a tuple of two parents crossed over
-    crossoverpoint = np.random.randint(1,REPRESENTATION_SIZE)
-
     x_chromossome_i1, x_chromossome_i2 = Population._swap(parents, X_CHROMOSSOME)        
     y_chromossome_i1, y_chromossome_i2 = Population._swap(parents, Y_CHROMOSSOME)        
 
@@ -114,7 +124,8 @@ class Population(list):
     return (i1,i2)
 
   def best(self):
-    return "f(%r,%r) = %r" % (np.amax(self).value(X_CHROMOSSOME),np.amax(self).value(Y_CHROMOSSOME),np.amax(self).fenotype())
+    bi = self.best_individual()
+    return "f(%r,%r) = %r" % (bi.value(X_CHROMOSSOME),bi.value(Y_CHROMOSSOME),bi.fenotype())
 
   def best_individual(self):
     return np.amax(self)
@@ -127,7 +138,7 @@ class Enviroment(object):
     self.best_so_far = Individual.random(W3)
 
   def __repr__(self):
-    return "gen: %r\ngencount: %r\nbest: %r\nfenotypes: %r\ngenfitness: %r\nprobability_selection:%r\nsample_selection: %r\nbest so far: %r\n" % (self.nextgen, self.gencount, self.best(), [i.fenotype() for i in self.nextgen], self.nextgen.sum(), [i.fenotype()/self.nextgen.sum() for i in self.nextgen],[i.fenotype() for i in self.nextgen.select()],self.best_so_far)
+    return "gen: %r\ngencount: %r\nbest: %r\nfenotypes: %r\ngenfitness: %r\nprobability_selection:%r\nsample_selection: %r\nbest so far: %r\n" % (self.nextgen, self.gencount, self.best(), [i.fenotype() for i in self.nextgen], self.nextgen.fitness(), [i.fenotype()/self.nextgen.fitness() for i in self.nextgen],[i.fenotype() for i in self.nextgen.select()],self.best_so_far)
 
   def best(self):
     return self.nextgen.best()

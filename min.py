@@ -47,16 +47,16 @@ class Individual(object):
 
   # private - not supposed to be exposed
 
-  def _value_uint(self, x_or_y):
-    return BitArray(self.genotype[x_or_y]).uint
+  def _value_uint(self, gene):
+    return BitArray(self.genotype[gene]).uint
 
   def _mutation_mask_generator(self):
     for i in xrange(REPRESENTATION_SIZE):
       yield np.random.binomial(BINOMIAL_TRY_COUNT,MUTATION_PROBABILITY)
 
-  def _mutate(self, x_or_y):
+  def _mutate(self, gene):
     mask = list(self._mutation_mask_generator())
-    np.bitwise_xor(self.genotype[x_or_y],mask,self.genotype[x_or_y])
+    np.bitwise_xor(self.genotype[gene], mask, self.genotype[gene])
 
   # end private
   
@@ -67,14 +67,14 @@ class Individual(object):
     i.eval_fn = eval_fn
     return i
 
-  def value(self, x_or_y):
-    return MIN_AXIS+(MAX_AXIS - MIN_AXIS)*(self._value_uint(x_or_y)/(2.0**REPRESENTATION_SIZE-1.0))
+  def value(self, gene):
+    return MIN_AXIS+(MAX_AXIS - MIN_AXIS)*(self._value_uint(gene)/(2.0**REPRESENTATION_SIZE-1.0))
   
   def fenotype(self):
-    return  self.eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
+    return self.eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
 
   def fenotype2(self,eval_fn):
-    return  eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
+    return eval_fn(self.value(X_CHROMOSSOME),self.value(Y_CHROMOSSOME)) 
 
   def mutate(self):
     self._mutate(X_CHROMOSSOME)

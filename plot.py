@@ -15,7 +15,7 @@ Y = np.arange(-2, 2.5, 0.5)
 X, Y = np.meshgrid(X, Y)
 Z = (-X*np.sin(np.sqrt(abs(X))))-(Y*np.sin(np.sqrt(abs(Y))))
 R = (100*(Y-X**2)**2)+((1-X)**2)
-W3 = -(R-Z)+4000
+W3 = (R-Z)
 
 surf = ax.plot_surface(X, Y,W3, rstride=1, cstride=1, cmap=cm.coolwarm,
         linewidth=0, antialiased=True)

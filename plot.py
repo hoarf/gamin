@@ -17,6 +17,7 @@ Z = (-X*np.sin(np.sqrt(abs(X))))-(Y*np.sin(np.sqrt(abs(Y))))
 R = (100*(Y-X**2)**2)+((1-X)**2)
 W3 = (R-Z)
 
+
 surf = ax.plot_surface(X, Y,W3, rstride=1, cstride=1, cmap=cm.coolwarm,
         linewidth=0, antialiased=True)
 

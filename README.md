@@ -74,5 +74,6 @@ TL;DR
 Author 
 ======
 
-github.com/hoarf 
-matehackers.org
+http://github.com/hoarf 
+
+http://matehackers.org

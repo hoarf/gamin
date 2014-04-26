@@ -19,9 +19,9 @@ Prerequisites
 =============
 
 I recommend using *ipython* as your console, and start it with the --pylab
-command line argument. But if you don't like all that is required here is
-*numpy* and *BitStream*. They are fairly well known libraries and you probably
-already have them.
+command line argument. But if you don't like it, all that is required in order 
+to run this is *numpy* and *BitStream*. They are fairly well known libraries 
+and you probably already have them.
 
 Usage 
 =====
@@ -39,9 +39,9 @@ things work.
 Details 
 =======
 
-I tried to keep the code clean and simple with a lot of one-liners so i
-wouldn't be so daunting to read like other codes like this one. The basic idea
-is this.
+I tried to keep the code clean and simple with a lot of one-liners so it
+wouldn't be so daunting to read like other similar codes. The basic idea
+is this:
 
     1.  First create a random population. 
 
@@ -70,7 +70,7 @@ TL;DR
 =====
 
 * Population size must be an even number. It won't work if your function have
-* a higher value than 4000 in the specified range, unless you set the upperbound parameter when creating the Environment.
+* A higher value than 4000 in the specified range, unless you set the upperbound parameter when creating the Environment.
 
 Author 
 ======
@@ -94,6 +94,15 @@ MIN_CUT_POINT = 1
 class Individual(object):
     """ Represents an individual in a gene pool """
 
+    @staticmethod
+    def random(options):
+        """ Returns a random individual """
+        i = Individual(options)
+        x_chromosome = np.random.choice(INTEGER_INTERVAL_SIZE,options.representation_size) 
+        y_chromosome = np.random.choice(INTEGER_INTERVAL_SIZE,options.representation_size) 
+        i.genotype = (x_chromosome, y_chromosome)
+        return i
+
     def __init__(self, options, *args, **kwargs):
         """ genotype: is a sequence of numpy arrays
             options: options for molding this class behavior
@@ -113,7 +122,7 @@ class Individual(object):
            self.value(X_CHROMOSOME),
            self.genotype[Y_CHROMOSOME],
            self.value(Y_CHROMOSOME),
-           self.phenotype_minimized()
+           self.phenotype_minimized
         )
 
     def __add__(self, other):
@@ -148,8 +157,27 @@ class Individual(object):
         """ Required to make a total_ordering relationship between 
             individuals 
         """
-        return self.phenotype < other.phenotype
-        
+        return self.phenotype < other.phenotype     
+    
+    @property  
+    def phenotype(self):
+        """ Represents this guy fitness using the maximizing function """
+        return self.eval_fn(self.value(X_CHROMOSOME),self.value(Y_CHROMOSOME)) 
+
+    @property
+    def phenotype_minimized(self):
+        """ Represents this guy fitness using the minimizing function. 
+            Because the roulette is used as selection method, a special care
+            is needed to prevent negative numbers to spoil the sum of 
+            generation fitness.
+            The special treatment consist in inverting the target function on 
+            the y axis and then adding an specific constant value to the
+            target function in order to make all functions points positive in 
+            the given interval.
+        """
+        return -self.eval_fn(
+            self.value(X_CHROMOSOME),self.value(Y_CHROMOSOME))+self.upperbound
+
     def _value_uint(self, gene):
         """ gene: either X_CHROMOSOME or Y_CHROMOSOME
             Converts a BitArray representation into an unsigned integer. 
@@ -174,38 +202,11 @@ class Individual(object):
         mask = self._generate_mutation_mask()
         np.logical_xor(self.genotype[gene], mask, self.genotype[gene])
 
-    @staticmethod
-    def random(options):
-        """ Returns a random individual """
-        i = Individual(options)
-        x_chromosome = np.random.choice(INTEGER_INTERVAL_SIZE,options.representation_size) 
-        y_chromosome = np.random.choice(INTEGER_INTERVAL_SIZE,options.representation_size) 
-        i.genotype = (x_chromosome, y_chromosome)
-        return i
-
     def value(self, gene):
         """ Returns the 'value' of the gene, or it's value as an unsigned 
             integer
         """
         return self.min_axis+(self.max_axis-self.min_axis)*(self._value_uint(gene)/(2.0**self.representation_size-1.0))
-    
-    @property  
-    def phenotype(self):
-        """ Represents this guy fitness using the maximizing function """
-        return self.eval_fn(self.value(X_CHROMOSOME),self.value(Y_CHROMOSOME)) 
-
-    def phenotype_minimized(self):
-        """ Represents this guy fitness using the minimizing function. 
-            Because the roulette is used as selection method, a special care
-            is needed to prevent negative numbers to spoil the sum of 
-            generation fitness.
-            The special treatment consist in inverting the target function on 
-            the y axis and then adding an specific constant value to the
-            target function in order to make all functions points positive in 
-            the given interval.
-        """
-        return -self.eval_fn(
-            self.value(X_CHROMOSOME),self.value(Y_CHROMOSOME))+self.upperbound
 
     def mutate(self):
         """ Tries to apply the mutation to every chromosome this individual has
@@ -217,40 +218,6 @@ class Individual(object):
 
 class Population(list):
     """ Represents a group or sequence of individuals """
-
-    @staticmethod
-    def random(options):
-        """ Returns a random population of the given size """
-        p = Population()
-        for i in xrange(options.population_size):
-          p.append(Individual.random(options))
-        return p
-
-    @property
-    def fitness(self):
-        """ Represents the cumulative amount of fitness across all individuals 
-        """
-        return sum(self)
-
-    @property
-    def size(self):
-        return len(self)
-
-    def select(self):
-        """ Returns a list with probability weighted selected parents """
-        return np.random.choice(self, self.size, p=[i/self.fitness for i in self])
-  
-    def pairup(self,parents):
-        """ Takes an even number of parents and returns iterator of pair of
-            parents. If an odd number of parents is submitted, then the last
-            parent is ignored 
-        """
-        return [(parents[i], parents[i+1]) for i, p in enumerate(parents[::2])]
-
-    @property
-    def best(self):
-        """ The best individual is the one with the highest fitness """
-        return np.amax(self)
 
     @staticmethod
     def _swap(parents, chromosome):
@@ -295,8 +262,48 @@ class Population(list):
         i2 = Individual(options,genotype=(x_chromosome_i2,y_chromosome_i2))
         return (i1,i2)
 
+    @staticmethod
+    def random(options):
+        """ Returns a random population of the given size """
+        p = Population()
+        for i in xrange(options.population_size):
+          p.append(Individual.random(options))
+        return p
+
+    @property
+    def fitness(self):
+        """ Represents the cumulative amount of fitness across all individuals 
+        """
+        return sum(self)
+
+    @property
+    def size(self):
+        return len(self)
+
+    def select(self):
+        """ Returns a list with probability weighted selected parents """
+        return np.random.choice(self, self.size, p=[i/self.fitness for i in self])
+  
+    def pairup(self,parents):
+        """ Takes an even number of parents and returns iterator of pair of
+            parents. If an odd number of parents is submitted, then the last
+            parent is ignored 
+        """
+        return [(parents[i], parents[i+1]) for i, p in enumerate(parents[::2])]
+
+    @property
+    def best(self):
+        """ The best individual is the one with the highest fitness """
+        return np.amax(self)
+
 class Environment(object):
     """ Represents all the external and algorithmical constraints """
+
+    @staticmethod
+    def update_options_with_kwargs(options, kwargs):
+       for key in kwargs:
+            if key in options:
+                options[key] = kwargs[key]
 
     def __init__(self, *args, **kwargs):
         options = Options()
@@ -320,12 +327,6 @@ class Environment(object):
             [i.phenotype for i in self.current_gen.select()],
             self.best_so_far
         )
-
-    @staticmethod
-    def update_options_with_kwargs(options, kwargs):
-       for key in kwargs:
-            if key in options:
-                options[key] = kwargs[key]
 
     @property
     def best(self):
@@ -392,10 +393,6 @@ class Options(object):
     def R(x,y):
         return 100*(y-x**2)**2+(1-x)**2
     
-    @staticmethod
-    def W3(x,y):
-        return R(x, y)-Z(x,y)
-
     def __init__(self, *args, **kwargs):
         self.population_size = kwargs.get('population',self.POPULATION_SIZE) 
         self.eval_fn = kwargs.get('eval_fn',

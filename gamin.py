@@ -70,7 +70,8 @@ TL;DR
 =====
 
 * Population size must be an even number. It won't work if your function have
-* A higher value than 4000 in the specified range, unless you set the upperbound parameter when creating the Environment.
+* A higher value than 4000 in the specified range, unless you set the upperbound 
+  parameter when creating the Environment.
 
 Author 
 ======
@@ -206,7 +207,9 @@ class Individual(object):
         """ Returns the 'value' of the gene, or it's value as an unsigned 
             integer
         """
-        return self.min_axis+(self.max_axis-self.min_axis)*(self._value_uint(gene)/(2.0**self.representation_size-1.0))
+        return self.min_axis+(
+            self.max_axis-self.min_axis)*(self._value_uint(gene)/(
+                2.0**self.representation_size-1.0))
 
     def mutate(self):
         """ Tries to apply the mutation to every chromosome this individual has
@@ -316,16 +319,18 @@ class Environment(object):
         self.best_so_far = Individual.random(options)
 
     def __repr__(self):
-      return "gen: %r\ngen_count: %r\nbest: %r\nphenotypes: %r\ngenfitness: %r\nprobability_selection:%r\nsample_selection: %r\nbest so far: %r\n" % (
-            self.current_gen,
-            self.gen_count,
-            self.best,
-            [i.phenotype for i in self.current_gen],
-            self.current_gen.fitness,
-            [i.phenotype/self.current_gen.fitness 
-                for i in self.current_gen], 
-            [i.phenotype for i in self.current_gen.select()],
-            self.best_so_far
+      return """gen: %r\ngen_count: %r\nbest: %r\nphenotypes: %r\ngenfitness:
+            %r\nprobability_selection:%r\nsample_selection: %r\nbest so far: 
+            %r\n""" % (
+                self.current_gen,
+                self.gen_count,
+                self.best,
+                [i.phenotype for i in self.current_gen],
+                self.current_gen.fitness,
+                [i.phenotype/self.current_gen.fitness 
+                    for i in self.current_gen], 
+                [i.phenotype for i in self.current_gen.select()],
+                self.best_so_far
         )
 
     @property
@@ -387,7 +392,7 @@ class Options(object):
 
     @staticmethod
     def Z(x,y):
-        return -x*np.sin(np.sqrt(abs(x))) - y*np.sin(np.sqrt(abs(y)))
+        return -x*np.sin(np.sqrt(abs(x)))-y*np.sin(np.sqrt(abs(y)))
     
     @staticmethod
     def R(x,y):

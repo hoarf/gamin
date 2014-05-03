@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="/home/hoarf/git/python/gamin/modern.work.css" type="text/css" />
+  <link rel="stylesheet" href="/home/hoarf/git/python/gamin/custom.css" type="text/css" />
+  <script type="text/javascript">/*<![CDATA[*/
+  /* 
+  March 19, 2004 MathHTML (c) Peter Jipsen http://www.chapman.edu/~jipsen
+  Released under the GNU General Public License version 2 or later.
+  See the GNU General Public License (at http://www.gnu.org/copyleft/gpl.html)
+  for more details.
+  */
+  
+  function convertMath(node) {// for Gecko
+    if (node.nodeType==1) {
+      var newnode = 
+        document.createElementNS("http://www.w3.org/1998/Math/MathML",
+          node.nodeName.toLowerCase());
+      for(var i=0; i < node.attributes.length; i++)
+        newnode.setAttribute(node.attributes[i].nodeName,
+          node.attributes[i].nodeValue);
+      for (var i=0; i<node.childNodes.length; i++) {
+        var st = node.childNodes[i].nodeValue;
+        if (st==null || st.slice(0,1)!=" " && st.slice(0,1)!="\n") 
+          newnode.appendChild(convertMath(node.childNodes[i]));
+      }
+      return newnode;
+    }
+    else return node;
+  }
+  
+  function convert() {
+    var mmlnode = document.getElementsByTagName("math");
+    var st,str,node,newnode;
+    for (var i=0; i<mmlnode.length; i++)
+      if (document.createElementNS!=null)
+        mmlnode[i].parentNode.replaceChild(convertMath(mmlnode[i]),mmlnode[i]);
+      else { // convert for IE
+        str = "";
+        node = mmlnode[i];
+        while (node.nodeName!="/MATH") {
+          st = node.nodeName.toLowerCase();
+          if (st=="#text") str += node.nodeValue;
+          else {
+            str += (st.slice(0,1)=="/" ? "</m:"+st.slice(1) : "<m:"+st);
+            if (st.slice(0,1)!="/") 
+               for(var j=0; j < node.attributes.length; j++)
+                 if (node.attributes[j].nodeValue!="italic" &&
+                   node.attributes[j].nodeValue!="" &&
+                   node.attributes[j].nodeValue!="inherit" &&
+                   node.attributes[j].nodeValue!=undefined)
+                   str += " "+node.attributes[j].nodeName+"="+
+                       "\""+node.attributes[j].nodeValue+"\"";
+            str += ">";
+          }
+          node = node.nextSibling;
+          node.parentNode.removeChild(node.previousSibling);
+        }
+        str += "</m:math>";
+        newnode = document.createElement("span");
+        node.parentNode.replaceChild(newnode,node);
+        newnode.innerHTML = str;
+      }
+  }
+  
+  if (document.createElementNS==null) {
+    document.write("<object id=\"mathplayer\"\
+    classid=\"clsid:32F66A20-7614-11D4-BD11-00104BD3F987\"></object>");
+    document.write("<?import namespace=\"m\" implementation=\"#mathplayer\"?>");
+  }
+  if(typeof window.addEventListener != 'undefined'){
+    window.addEventListener('load', convert, false);
+  }
+  if(typeof window.attachEvent != 'undefined') {
+    window.attachEvent('onload', convert);
+  }
+  /*]]>*/
+  </script>
+</head>
+<body>
+<div id="TOC">
+<ul>
+<li><a href="#sobre-este-documento">Sobre este Documento</a></li>
+<li><a href="#sobre-o-algoritmo">Sobre o algoritmo</a><ul>
+<li><a href="#objetivo">Objetivo</a></li>
+<li><a href="#representação">Representação</a></li>
+<li><a href="#resumo">Resumo</a></li>
+<li><a href="#método-de-seleção">Método de seleção</a></li>
+<li><a href="#crossover"><em>Crossover</em></a></li>
+<li><a href="#mutação">Mutação</a></li>
+<li><a href="#resultados-obtidos">Resultados Obtidos</a></li>
+<li><a href="#conclusão">Conclusão</a></li>
+</ul></li>
+</ul>
+</div>
+<h1 id="sobre-este-documento">Sobre este Documento</h1>
+<p>Este é um relatório sobre a atividade de desenvolvimento de um algoritmo genético para a cadeira de Computação Evolutiva cursada no primeiro semestre de 2014 no Instituto de Informática da Universidade Federal do Rio Grande do Sul (UFRGS).im</p>
+<h1 id="sobre-o-algoritmo">Sobre o algoritmo</h1>
+<h2 id="objetivo">Objetivo</h2>
+<p>Dada uma função <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>f</mi><mo>=</mo><mo stretchy="false">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="false">)</mo></mrow></math>, com <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>x</mi><mo>,</mo><mi>y</mi><mo>∈</mo><mo stretchy="false">[</mo><mi>a</mi><mo>:</mo><mi>b</mi><mo stretchy="false">]</mo></mrow></math> onde <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>a</mi><mo>,</mo><mi>b</mi><mo>∈</mo><mo>ℜ</mo></mrow></math>, encontrar um par de pontos <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mo stretchy="false">(</mo><msub><mi>x</mi><mn>1</mn></msub><mo>,</mo><msub><mi>y</mi><mn>1</mn></msub><mo stretchy="false">)</mo><mo>∈</mo><mo stretchy="false">[</mo><mi>a</mi><mo>:</mo><mi>b</mi><mo stretchy="false">]</mo></mrow></math> tal que o valor de <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>f</mi><mo stretchy="false">(</mo><msub><mi>x</mi><mn>1</mn></msub><mo>,</mo><msub><mi>y</mi><mn>1</mn></msub><mo stretchy="false">)</mo></mrow></math> seja o menor possível.</p>
+<h2 id="representação">Representação</h2>
+<p>Um <em>indivíduo</em> corresponde a uma coordenada <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mo stretchy="false">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="false">)</mo></mrow></math> do problema acima e o seu <em>fenótipo</em> é dado pela função de avaliação <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>=</mo><mo stretchy="false">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo>,</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="false">)</mo></mrow></math>. Dizemos que indivíduos com menor valor de f são considerados mais adaptados e possuem um fenótipo vantajoso, portanto tem maior chance de ser selecionados. Cada <em>gene</em> do indivíduo é representado por um vetor de 0’s e 1’s de tamanho arbitrário <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>R</mi></mrow></math>. Cada valor dentro do gene é chamado de <em>alelo</em>.</p>
+<p>Um indivíduo é composto por um par de genes que correspondem a cada uma das coordenadas <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>x</mi></mrow></math> e <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>y</mi></mrow></math>. A conversão da cadeia de bits para o seu valor <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>V</mi><mo>∈</mo><mo>ℜ</mo></mrow></math> é dada pela seguinte fórmula.</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>V</mi><mo>=</mo><mi>a</mi><mo>+</mo><mo stretchy="false">(</mo><mi>b</mi><mo>−</mo><mi>a</mi><mo stretchy="false">)</mo><mo>*</mo><mi>U</mi><mo>/</mo><msup><mn>2</mn><mi>R</mi></msup><mo>−</mo><mn>1</mn></mrow></math></p>
+<p>Onde <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>U</mi></mrow></math> corresponde ao valor da cadeia de bits convertido para um número inteiro sem sinal.</p>
+<h2 id="resumo">Resumo</h2>
+<p>O algoritmo segue a seguinte idéia básica</p>
+<ol style="list-style-type: decimal">
+<li><p>O algoritmo inicia a sua execução com uma população inicial de inidivíduos <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>P</mi></mrow></math> de tamanho <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>n</mi></mrow></math> com genótipos escolhidos aleatoriamente</p></li>
+<li><p>A seguir a roleta é girada <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>n</mi></mrow></math> vezes para produzir uma nova população do indivíduos selecionados.</p></li>
+<li><p>Estes indivíduos então são agrupados em pares.</p></li>
+<li><p>Cada par sofre o processo de <em>crossover</em> que consiste em:</p></li>
+<li><p>1 Escolher um ponto arbitrário entre <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mn>1</mn></mrow></math> e <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>R</mi><mo>−</mo><mn>1</mn></mrow></math> que servirá de ponto de corte.</p></li>
+<li><p>2 O genótipo do integrante do par é trocado pelo mesmo trecho do outro indivíduo pertecente ao par</p></li>
+<li><p>A seguir cada indivíduo da população depois de sofrer o <em>crossover</em> com algum par recebe uma chance <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>M</mi></mrow></math> de que cada bit do seu genótipo possa ser invertido.</p></li>
+<li><p>O processo continua volta para o passo 2 até que o algoritmo tenha executado <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>K</mi></mrow></math> iterações.</p></li>
+</ol>
+<h2 id="método-de-seleção">Método de seleção</h2>
+<p>O método de seleção utilizado foi a escolha por roleta.</p>
+<p>Este método consiste em estabelecer o <em>pool</em> de <em>fitness</em> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>F</mi></mrow></math> de uma população <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>P</mi></mrow></math> de tamanho <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>n</mi></mrow></math>. Em seguida é avaliada a contribuição de cada indivíduo para o pool: {<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>f</mi><mi>i</mi></msub><mo stretchy="false">∣</mo><mi>i</mi><mo>∈</mo><mn>1</mn><mo>.</mo><mo>.</mo><mi>n</mi></mrow></math>}.</p>
+<p>Então, a probabilidade de um indivíduo ser escolhido <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>P</mi><mi>i</mi></msub></mrow></math> é:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>P</mi><mi>i</mi></msub><mo>=</mo><msub><mi>f</mi><mi>i</mi></msub><mo>/</mo><mi>F</mi></mrow></math></p>
+<p>Determinadas as probabilidades de seleção de cada indivíduo, uma nova população de tamanho <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>n</mi></mrow></math> é sorteada.</p>
+<h2 id="crossover"><em>Crossover</em></h2>
+<p>Dada a representação vetorial dos genes do indivíduo com o primeiro índice do vetor sendo igual a 0, o <em>crossover</em> consiste em estipular um ponto de corte aleatório <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>p</mi><mo>∈</mo><mn>1</mn><mo>.</mo><mo>.</mo><mi>R</mi><mo>−</mo><mn>1</mn></mrow></math>.</p>
+<p>Com este ponto, dois novos indivíduos são gerados com os genótipos contendo a troca dos genes naquele ponto.</p>
+<p>Exemplo:</p>
+<p>Sejam os indivíduos dados em uma representação de tamanho <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>R</mi><mo>=</mo><mn>6</mn></mrow></math> e um ponto de corte <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>p</mi><mi>x</mi></msub><mo>=</mo><mn>2</mn></mrow></math> e <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>p</mi><mi>y</mi></msub><mo>=</mo><mn>3</mn></mrow></math>:</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>1</mn><mi>x</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i1">0 1 | 0 0 0 1</span> ] <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>2</mn><mi>x</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i2">1 1 | 0 1 0 0</span> ]</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>1</mn><mi>y</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i1">0 0 0 | 1 1 1</span> ] <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>2</mn><mi>y</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i2">0 1 0 | 0 0 1</span> ]</p>
+<p>O resultado do <em>crossover</em> produzido será:</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>3</mn><mi>x</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i2">1 1</span> | <span class="i1"> 0 0 0 1</span> ] <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>4</mn><mi>x</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i1">0 1</span> | <span class="i2"> 0 1 0 0</span> ]</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>3</mn><mi>y</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i2">0 1 0</span> | <span class="i1"> 1 1 1</span> ] <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><msub><mi>i</mi><msub><mn>4</mn><mi>y</mi></msub></msub><mo>=</mo></mrow></math> [ <span class="i1">0 0 0</span> | <span class="i2"> 0 0 1</span> ]</p>
+<h2 id="mutação">Mutação</h2>
+<p>Para cada alelo de cada gene do inivíduo resultante do <em>crossover</em>, é computada uma chance <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>M</mi></mrow></math> do alelo trocar o seu valor, ou seja, os bits que estavam em 1 trocam o seu valor para 0 e vice-versa.</p>
+<h2 id="resultados-obtidos">Resultados Obtidos</h2>
+<p>Os experimentos abaixo foram executados em uma máquina contendo um processador da família i5 da intel com 4GB de memória RAM.</p>
+<p>A linguagem escolhida para a implementação (python) utiliza somente uma thread para a execução do programa.</p>
+<p>Todos os valores representam genes com tamanho de representação <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><mrow><mi>R</mi><mo>=</mo><mn>20</mn></mrow></math>. Os valores representam a média de 10 execuções</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Melhor solução em 10 segundos de execução</th>
+<th align="left">Tamanho da população</th>
+<th align="left">Taxa de Mutação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">0619.87</td>
+<td align="left">50</td>
+<td align="left">0.01</td>
+</tr>
+<tr class="even">
+<td align="left">0714.83</td>
+<td align="left">26</td>
+<td align="left">0.01</td>
+</tr>
+<tr class="odd">
+<td align="left">0535.38</td>
+<td align="left">02</td>
+<td align="left">0.01</td>
+</tr>
+<tr class="even">
+<td align="left">0545.78</td>
+<td align="left">50</td>
+<td align="left">0.10</td>
+</tr>
+<tr class="odd">
+<td align="left">0506.57</td>
+<td align="left">26</td>
+<td align="left">0.10</td>
+</tr>
+<tr class="even">
+<td align="left">0497.36</td>
+<td align="left">02</td>
+<td align="left">0.10</td>
+</tr>
+<tr class="odd">
+<td align="left">0860.61</td>
+<td align="left">50</td>
+<td align="left">0.50</td>
+</tr>
+<tr class="even">
+<td align="left">0813.32</td>
+<td align="left">26</td>
+<td align="left">0.50</td>
+</tr>
+<tr class="odd">
+<td align="left">0559.27</td>
+<td align="left">02</td>
+<td align="left">0.50</td>
+</tr>
+</tbody>
+</table>
+<h2 id="conclusão">Conclusão</h2>
+<p>Os dados coletados sugerem que o aumento do tamnho da população não melhora a performance do algoritmo e pode até piorá-lo para os casos em que a taxa de mutação é muito alta.</p>
+<p>Uma taxa de mutação de 10% se mostrou melhor que uma taxa de 1% ou 50%, o que sugere que não há uma correlação linear entre a taxa de mutação e a performance do algoritmo.</p>
+</body>
+</html>

@@ -82,6 +82,7 @@ matehackers.org
 """
 
 import numpy as np
+import time
 from bitstring import BitArray
 from functools import total_ordering
 
@@ -302,26 +303,18 @@ class Population(list):
 class Environment(object):
     """ Represents all the external and algorithmical constraints """
 
-    @staticmethod
-    def update_options_with_kwargs(options, kwargs):
-       for key in kwargs:
-            if key in options:
-                options[key] = kwargs[key]
-
     def __init__(self, *args, **kwargs):
-        options = Options()
-        Environment.update_options_with_kwargs(
-            options, kwargs)
-        print "%r" % options              
+        options = Options(kwargs)
         self.current_gen = Population.random(options)
         self.gen_count = 0
         self.max_iter = options.max_iter
         self.best_so_far = Individual.random(options)
+        self.time_to_best = 0
 
     def __repr__(self):
       return """gen: %r\ngen_count: %r\nbest: %r\nphenotypes: %r\ngenfitness:
             %r\nprobability_selection:%r\nsample_selection: %r\nbest so far: 
-            %r\n""" % (
+            %r\ntime_to_get_best: %r""" % (
                 self.current_gen,
                 self.gen_count,
                 self.best,
@@ -330,7 +323,8 @@ class Environment(object):
                 [i.phenotype/self.current_gen.fitness 
                     for i in self.current_gen], 
                 [i.phenotype for i in self.current_gen.select()],
-                self.best_so_far
+                self.best_so_far,
+                self.time_to_best
         )
 
     @property
@@ -368,12 +362,14 @@ class Environment(object):
         self.current_gen = new_gen
         if self.current_gen.best > self.best_so_far:
             self.best_so_far = self.current_gen.best
-        print self
-
+            self.time_to_best = time.clock() - self.base_time
+        
     def fast_foward(self):
         """ Proceeds with the whole thing until the max_iterations is hit """
-        while self.gen_count < self.max_iter:
+        self.base_time = time.clock()
+        while (time.clock() - self.base_time) < self.max_iter:
             self.step()
+        return self.best_so_far.phenotype_minimized
 
     def next(self):
         """ Advance one generation """
@@ -383,12 +379,12 @@ class Options(object):
     """ Captures all the algorithm options """
 
     REPRESENTATION_SIZE = 20
-    MUTATION_RATE = 0.01
+    MUTATION_RATE = 0.5
     MIN_AXIS = -2.0
     MAX_AXIS = 2.0
-    POPULATION_SIZE = 8
+    POPULATION_SIZE = 4
     UPPERBOUND = 4000
-    MAX_ITER = 100
+    MAX_ITER = 10
 
     @staticmethod
     def Z(x,y):
@@ -398,8 +394,8 @@ class Options(object):
     def R(x,y):
         return 100*(y-x**2)**2+(1-x)**2
     
-    def __init__(self, *args, **kwargs):
-        self.population_size = kwargs.get('population',self.POPULATION_SIZE) 
+    def __init__(self, kwargs):
+        self.population_size = kwargs.get('population_size',self.POPULATION_SIZE) 
         self.eval_fn = kwargs.get('eval_fn',
             lambda x,y: Options.R(x,y)-Options.Z(x, y))
         self.min_axis = kwargs.get('min_axis',self.MIN_AXIS)
